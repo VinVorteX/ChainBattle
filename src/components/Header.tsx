@@ -17,32 +17,32 @@ import {
 export const Header = () => {
   const links = [
     {
+      title: "Home",
+      icon: (
+        <IconHome className="h-full w-full text-black" />
+      ),
+      href: "/",
+    },
+    {
       title: "Mint",
       icon: (
         <IconRocket className="h-full w-full text-black" />
       ),
-      href: "#mint",
+      href: "/mint",
     },
     {
       title: "Battle",
       icon: (
         <IconSword className="h-full w-full text-black" />
       ),
-      href: "#battle",
+      href: "/game",
     },
     {
       title: "Trade",
       icon: (
         <IconShoppingCart className="h-full w-full text-black" />
       ),
-      href: "#trade",
-    },
-    {
-      title: "Collection",
-      icon: (
-        <IconTerminal2 className="h-full w-full text-black" />
-      ),
-      href: "#collection",
+      href: "/marketplace",
     },
   ];
   return (
