@@ -10,10 +10,10 @@ import { Sparkles, Swords, Trophy, Shield, Zap, Users, Bot, Flame, Droplet, Wind
 import { motion, AnimatePresence } from "motion/react";
 import { useWallet } from "@/contexts/WalletContext";
 
-const NFT_CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
-const GAME_CONTRACT_ADDRESS = "0xabcdef1234567890abcdef1234567890abcdef12";
+const NFT_CONTRACT_ADDRESS = "0xee73B279fD76768e40509B5188EDc380A90CB99F";
+const GAME_CONTRACT_ADDRESS = "0xB0068513D0b609f9060544f99C36F0Ca283Fb216";
 
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 import { BattlePetNFTABI } from "@/contracts/config";
 

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, BattlePetNFTABI, MarketplaceABI } from "@/contracts/config";
 import { useWallet } from "@/contexts/WalletContext";
 
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 type MarketListing = {
   listingId: number;
