@@ -1,7 +1,50 @@
 import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
+import React from "react";
+import { FloatingDock } from "@/components/ui/floating-dock";
+import {
+  IconBrandGithub,
+  IconBrandX,
+  IconExchange,
+  IconHome,
+  IconNewSection,
+  IconTerminal2,
+  IconSword,
+  IconShoppingCart,
+  IconRocket,
+} from "@tabler/icons-react";
 
 export const Header = () => {
+  const links = [
+    {
+      title: "Mint",
+      icon: (
+        <IconRocket className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "#mint",
+    },
+    {
+      title: "Battle",
+      icon: (
+        <IconSword className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "#battle",
+    },
+    {
+      title: "Trade",
+      icon: (
+        <IconShoppingCart className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "#trade",
+    },
+    {
+      title: "Collection",
+      icon: (
+        <IconTerminal2 className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "#collection",
+    },
+  ];
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -13,18 +56,9 @@ export const Header = () => {
         </div>
         
         <nav className="hidden md:flex items-center gap-6">
-          <a href="#mint" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Mint
-          </a>
-          <a href="#battle" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Battle
-          </a>
-          <a href="#trade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Trade
-          </a>
-          <a href="#collection" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Collection
-          </a>
+          <FloatingDock
+            items={links}
+          />
         </nav>
         
         <Button variant="neon" size="sm">
