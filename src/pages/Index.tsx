@@ -1,9 +1,12 @@
+"use client";
 import { Header } from "@/components/Header";
 import { CharacterCard } from "@/components/CharacterCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Swords, ArrowRightLeft, Shield } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { LayoutTextFlip } from "@/components/ui/layout-text-flip";
+import { motion } from "motion/react";
 
 const Index = () => {
   const sampleCharacters = [
@@ -30,15 +33,23 @@ const Index = () => {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h1 className="text-5xl md:text-7xl font-bold">
-              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto]">
-                On-Chain Battle Arena
-              </span>
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Mint unique NFT warriors, battle for glory, and trade with complete transparency. 
-              Every action lives on the blockchain—true ownership, proven fairness.
-            </p>
+            <div className="text-center space-y-6">
+      <motion.div className="flex flex-col items-center justify-center">
+        <LayoutTextFlip
+          text="On-Chain Battle Arena"
+          words={[
+            "NFT Warrior Arena", 
+            "Blockchain Combat", 
+            "Web3 Fight Club", 
+            "Crypto Battle Grounds"
+          ]}
+        />
+      </motion.div>
+      <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        Mint unique NFT warriors, battle for glory, and trade with complete transparency. 
+        Every action lives on the blockchain—true ownership, proven fairness.
+      </p>
+    </div>
             <div className="flex gap-4 justify-center pt-4">
               <Button variant="hero" size="lg">
                 <Sparkles className="mr-2 h-5 w-5" />
