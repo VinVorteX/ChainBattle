@@ -19,28 +19,28 @@ export const Header = () => {
     {
       title: "Mint",
       icon: (
-        <IconRocket className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+        <IconRocket className="h-full w-full text-black" />
       ),
       href: "#mint",
     },
     {
       title: "Battle",
       icon: (
-        <IconSword className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+        <IconSword className="h-full w-full text-black" />
       ),
       href: "#battle",
     },
     {
       title: "Trade",
       icon: (
-        <IconShoppingCart className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+        <IconShoppingCart className="h-full w-full text-black" />
       ),
       href: "#trade",
     },
     {
       title: "Collection",
       icon: (
-        <IconTerminal2 className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+        <IconTerminal2 className="h-full w-full text-black" />
       ),
       href: "#collection",
     },
@@ -61,7 +61,7 @@ export const Header = () => {
           />
         </nav>
         
-        <Button variant="neon" size="sm">
+        <Button className="bg-gradient-to-br from-primary to-accent text-black" size="sm">
           <Wallet className="mr-2 h-4 w-4" />
           Connect Wallet
         </Button>
