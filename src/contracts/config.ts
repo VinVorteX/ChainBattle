@@ -1,9 +1,10 @@
 // Replace these with your deployed contract addresses
-export const NFT_CONTRACT_ADDRESS = "0xee73B279fD76768e40509B5188EDc380A90CB99F";
-export const MARKETPLACE_CONTRACT_ADDRESS = "0x4DdB2cf3a7c8d74375a8Ab28F78769F2Ac54b5B9";
+export const NFT_CONTRACT_ADDRESS = "0x3cC634e27e9C97BAC7816461B5112cBEb3e81E35";
+export const MARKETPLACE_CONTRACT_ADDRESS = "0xDa09D844A62bC49B65566C800D04497Cd4885ef9";
 
 // Import ABIs
-import BattlePetNFTABI from "./BattlePetNFT.json";
+import BattlePetNFTArtifact from "./BattlePetNFT.json";
 import MarketplaceABI from "./Marketplace.json";
 
-export { BattlePetNFTABI, MarketplaceABI };
+export const BattlePetNFTABI = BattlePetNFTArtifact.abi;
+export { MarketplaceABI };

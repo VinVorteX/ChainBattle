@@ -10,8 +10,8 @@ import { Sparkles, Swords, Trophy, Shield, Zap, Users, Bot, Flame, Droplet, Wind
 import { motion, AnimatePresence } from "motion/react";
 import { useWallet } from "@/contexts/WalletContext";
 
-const NFT_CONTRACT_ADDRESS = "0xee73B279fD76768e40509B5188EDc380A90CB99F";
-const GAME_CONTRACT_ADDRESS = "0xB0068513D0b609f9060544f99C36F0Ca283Fb216";
+const NFT_CONTRACT_ADDRESS = "0x3cC634e27e9C97BAC7816461B5112cBEb3e81E35";
+const GAME_CONTRACT_ADDRESS = "0xDa09D844A62bC49B65566C800D04497Cd4885ef9";
 
 const DEMO_MODE = false;
 
@@ -196,14 +196,32 @@ export default function Game() {
 
     try {
       const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
-      const balance = await nftContract.balanceOf(account);
+      const tokenIds = await nftContract.tokensOfOwner(account);
+      
+      console.log("Token IDs:", tokenIds);
       
       const chars: Character[] = [];
-      // Since your contract doesn't have tokensOfOwner, we'll need to track minted tokens
-      // For now, just show demo characters when connected
-      if (Number(balance) > 0) {
-        loadDemoCharacters();
+      for (let i = 0; i < tokenIds.length; i++) {
+        const tokenId = Number(tokenIds[i]);
+        const element = elements[tokenId % 4] as any;
+        const type = characterTypes[tokenId % 5] as any;
+        const pokemonData = getPokemonData(element, tokenId);
+        
+        chars.push({
+          tokenId,
+          name: `${type} #${tokenId}`,
+          type,
+          power: pokemonData.power,
+          defense: pokemonData.defense,
+          wins: 0,
+          level: 1,
+          element,
+          image: pokemonData.image,
+        });
       }
+      
+      console.log("Loaded characters:", chars);
+      setMyCharacters(chars);
     } catch (err) {
       console.error("Load characters error:", err);
     }
@@ -319,11 +337,11 @@ export default function Game() {
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Fair battle calculation: stats + large random factor (0-100)
+    // Player advantage: 30% boost + random factor
     const myRandom = Math.random() * 100;
-    const oppRandom = Math.random() * 100;
+    const oppRandom = Math.random() * 80; // AI gets less random bonus
     
-    const myTotal = selectedChar.power + selectedChar.defense + myRandom;
+    const myTotal = (selectedChar.power + selectedChar.defense) * 1.3 + myRandom;
     const oppTotal = opponentChar.power + opponentChar.defense + oppRandom;
 
     const winner = myTotal > oppTotal ? selectedChar : opponentChar;
