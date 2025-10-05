@@ -10,8 +10,8 @@ import { Sparkles, Swords, Trophy, Shield, Zap, Users, Bot, Flame, Droplet, Wind
 import { motion, AnimatePresence } from "motion/react";
 import { useWallet } from "@/contexts/WalletContext";
 
-const NFT_CONTRACT_ADDRESS = "0x3cC634e27e9C97BAC7816461B5112cBEb3e81E35";
-const GAME_CONTRACT_ADDRESS = "0xDa09D844A62bC49B65566C800D04497Cd4885ef9";
+const NFT_CONTRACT_ADDRESS = "0xff3Ff566E5f0cEaA7337FB1752a6A8ec5d62f362";
+const GAME_CONTRACT_ADDRESS = "0x75F740d3C424452aA99d9FEe5754C50bb4F8f594";
 
 const DEMO_MODE = false;
 
@@ -332,35 +332,45 @@ export default function Game() {
   async function executeBattle() {
     if (!selectedChar || !opponentChar) return;
 
+    // Store tokenIds before battle
+    const myTokenId = selectedChar.tokenId;
+    const myCharName = selectedChar.name;
+
     setIsBattling(true);
     setBattleState("battling");
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Player advantage: 30% boost + random factor
-    const myRandom = Math.random() * 100;
-    const oppRandom = Math.random() * 80; // AI gets less random bonus
+    const myTotal = selectedChar.power + selectedChar.defense + (selectedChar.wins * 5) + Math.random() * 30;
+    const oppTotal = opponentChar.power + opponentChar.defense + (opponentChar.wins * 5) + Math.random() * 30;
     
-    const myTotal = (selectedChar.power + selectedChar.defense) * 1.3 + myRandom;
-    const oppTotal = opponentChar.power + opponentChar.defense + oppRandom;
-
-    const winner = myTotal > oppTotal ? selectedChar : opponentChar;
-    const loser = myTotal > oppTotal ? opponentChar : selectedChar;
-
-    const details = `${winner.name} wins with ${Math.round(myTotal > oppTotal ? myTotal : oppTotal)} total power!`;
+    const isVictory = myTotal > oppTotal;
+    const winner = isVictory ? selectedChar : opponentChar;
+    const loser = isVictory ? opponentChar : selectedChar;
+    
+    const details = `${winner.name} wins with ${Math.round(isVictory ? myTotal : oppTotal)} total power!`;
 
     setBattleResult({ winner, loser, details });
     setBattleState("result");
     setIsBattling(false);
 
-    if (winner.tokenId === selectedChar.tokenId) {
+    // Handle NFT transfer on win/loss
+    if (isVictory) {
+      // Victory - gain opponent's NFT (only in multiplayer vs real players)
+      if (gameMode === "multiplayer") {
+        toast({ title: "Victory! 🎉", description: "You won the opponent's NFT!", duration: 5000 });
+        setMyCharacters(prev => [...prev, opponentChar]);
+      } else {
+        toast({ title: "Victory! 🎉", description: "Your character gained experience!" });
+      }
+      
       setMyCharacters(prev => prev.map(c => 
-        c.tokenId === selectedChar.tokenId 
+        c.tokenId === myTokenId
           ? { ...c, wins: c.wins + 1, level: Math.floor((c.wins + 1) / 3) + 1 }
           : c
       ));
-      toast({ title: "Victory! 🎉", description: "Your character gained experience!" });
     } else {
+      // Defeat
       toast({ title: "Defeated", description: "Better luck next time!", variant: "destructive" });
     }
   }

@@ -43,116 +43,27 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState<string>("price-low");
 
   useEffect(() => {
-    loadMarketplace();
     if (isConnected && signer) {
       loadMyCollection();
       loadMarketplaceListings();
     }
   }, [isConnected, signer]);
 
-  function loadMarketplace() {
-    // Demo marketplace listings
-    const demoListings: MarketListing[] = [
-      {
-        listingId: 1,
-        tokenId: 6,
-        name: "Charizard #6",
-        type: "Warrior",
-        power: 84,
-        defense: 78,
-        level: 3,
-        element: "Fire",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
-        price: "0.05",
-        seller: "0x1234...5678",
-        isOwned: false,
-      },
-      {
-        listingId: 2,
-        tokenId: 9,
-        name: "Blastoise #9",
-        type: "Tank",
-        power: 83,
-        defense: 100,
-        level: 4,
-        element: "Water",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png",
-        price: "0.08",
-        seller: "0xabcd...efgh",
-        isOwned: false,
-      },
-      {
-        listingId: 3,
-        tokenId: 25,
-        name: "Pikachu #25",
-        type: "Assassin",
-        power: 55,
-        defense: 40,
-        level: 2,
-        element: "Wind",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
-        price: "0.02",
-        seller: "0x9876...4321",
-        isOwned: false,
-      },
-      {
-        listingId: 4,
-        tokenId: 59,
-        name: "Arcanine #59",
-        type: "Warrior",
-        power: 110,
-        defense: 80,
-        level: 5,
-        element: "Fire",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/59.png",
-        price: "0.15",
-        seller: "0x5555...6666",
-        isOwned: false,
-      },
-      {
-        listingId: 5,
-        tokenId: 130,
-        name: "Gyarados #130",
-        type: "Warrior",
-        power: 125,
-        defense: 79,
-        level: 6,
-        element: "Water",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
-        price: "0.20",
-        seller: "0x7777...8888",
-        isOwned: false,
-      },
-      {
-        listingId: 6,
-        tokenId: 76,
-        name: "Golem #76",
-        type: "Tank",
-        power: 120,
-        defense: 130,
-        level: 5,
-        element: "Earth",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/76.png",
-        price: "0.12",
-        seller: "0x3333...4444",
-        isOwned: false,
-      },
-    ];
-    setListings(demoListings);
-  }
-
   async function loadMyCollection() {
     if (!signer || !account) return;
 
     try {
       const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
-      const tokenIds: bigint[] = await nftContract.tokensOfOwner(addr);
+      const tokenIds = await nftContract.tokensOfOwner(account);
       
       const collection: MarketListing[] = [];
-      for (const id of tokenIds) {
-        const tokenId = Number(id);
+      for (let i = 0; i < tokenIds.length; i++) {
+        const tokenId = Number(tokenIds[i]);
         const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
         const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
+        
+        // Get Pokemon data
+        const pokemonId = getPokemonIdByElement(element, tokenId);
         
         collection.push({
           listingId: tokenId,
@@ -161,9 +72,9 @@ export default function Marketplace() {
           type,
           power: 50 + (tokenId % 50),
           defense: 40 + (tokenId % 60),
-          level: Math.floor(tokenId / 10) + 1,
+          level: 1,
           element,
-          image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${(tokenId % 150) + 1}.png`,
+          image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`,
           price: "0",
           seller: account,
           isOwned: true,
@@ -175,25 +86,33 @@ export default function Marketplace() {
     }
   }
 
+  function getPokemonIdByElement(element: string, seed: number): number {
+    const pokemonByElement: Record<string, number[]> = {
+      Fire: [4, 5, 6, 37, 38, 58, 59, 77, 78, 126, 136, 146],
+      Water: [7, 8, 9, 54, 55, 60, 61, 62, 86, 87, 116, 117, 130, 131, 134],
+      Wind: [16, 17, 18, 21, 22, 25, 26, 81, 82, 100, 101, 125, 135, 145],
+      Earth: [27, 28, 31, 34, 50, 51, 74, 75, 76, 95, 104, 105, 111, 112],
+    };
+    const elementPokemon = pokemonByElement[element] || pokemonByElement.Fire;
+    return elementPokemon[seed % elementPokemon.length];
+  }
+
   async function loadMarketplaceListings() {
     if (!signer) return;
 
     try {
-      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
       const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
-      
-      // Get all NFTs and check which are listed
-      const totalSupply = await nftContract.balanceOf(MARKETPLACE_CONTRACT_ADDRESS);
       const marketListings: MarketListing[] = [];
       
-      // Check listings for token IDs (adjust range based on your NFT supply)
+      // Check listings for token IDs 1-100
       for (let tokenId = 1; tokenId <= 100; tokenId++) {
         try {
-          const price: bigint = await marketContract.listings(tokenId);
+          const price = await marketContract.listings(tokenId);
           if (price > 0n) {
             const seller = await marketContract.tokenSellers(tokenId);
             const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
             const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
+            const pokemonId = getPokemonIdByElement(element, tokenId);
             
             marketListings.push({
               listingId: tokenId,
@@ -202,16 +121,18 @@ export default function Marketplace() {
               type,
               power: 50 + (tokenId % 50),
               defense: 40 + (tokenId % 60),
-              level: Math.floor(tokenId / 10) + 1,
+              level: 1,
               element,
-              image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${(tokenId % 150) + 1}.png`,
+              image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`,
               price: ethers.formatEther(price),
               seller,
-              isOwned: false,
+              isOwned: seller.toLowerCase() === account?.toLowerCase(),
             });
           }
         } catch {}
       }
+      
+      console.log("Marketplace listings:", marketListings);
       setListings(marketListings);
     } catch (err) {
       console.error("Load marketplace error:", err);
