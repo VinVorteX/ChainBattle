@@ -47,18 +47,39 @@ export default function Marketplace() {
       loadMyCollection();
       loadMarketplaceListings();
     }
-  }, [isConnected, signer]);
+  }, [isConnected, signer, account]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isConnected && signer) {
+        loadMyCollection();
+        loadMarketplaceListings();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isConnected, signer, account]);
 
   async function loadMyCollection() {
     if (!signer || !account) return;
 
     try {
       const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
       const tokenIds = await nftContract.tokensOfOwner(account);
       
       const collection: MarketListing[] = [];
       for (let i = 0; i < tokenIds.length; i++) {
         const tokenId = Number(tokenIds[i]);
+        
+        // Check if this token is listed on marketplace
+        const listing = await marketContract.listings(tokenId);
+        if (listing.active) {
+          // Skip tokens that are listed for sale
+          continue;
+        }
+        
         const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
         const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
         
@@ -107,9 +128,8 @@ export default function Marketplace() {
       // Check listings for token IDs 1-100
       for (let tokenId = 1; tokenId <= 100; tokenId++) {
         try {
-          const price = await marketContract.listings(tokenId);
-          if (price > 0n) {
-            const seller = await marketContract.tokenSellers(tokenId);
+          const listing = await marketContract.listings(tokenId);
+          if (listing.active && listing.price > 0n) {
             const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
             const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
             const pokemonId = getPokemonIdByElement(element, tokenId);
@@ -124,9 +144,9 @@ export default function Marketplace() {
               level: 1,
               element,
               image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`,
-              price: ethers.formatEther(price),
-              seller,
-              isOwned: seller.toLowerCase() === account?.toLowerCase(),
+              price: ethers.formatEther(listing.price),
+              seller: listing.seller,
+              isOwned: listing.seller.toLowerCase() === account?.toLowerCase(),
             });
           }
         } catch {}

@@ -9,13 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Swords, Trophy, Shield, Zap, Users, Bot, Flame, Droplet, Wind, Mountain, Target } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useWallet } from "@/contexts/WalletContext";
+import { BattlePetNFTABI, MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI } from "@/contracts/config";
 
 const NFT_CONTRACT_ADDRESS = "0xff3Ff566E5f0cEaA7337FB1752a6A8ec5d62f362";
 const GAME_CONTRACT_ADDRESS = "0x75F740d3C424452aA99d9FEe5754C50bb4F8f594";
 
 const DEMO_MODE = false;
-
-import { BattlePetNFTABI } from "@/contracts/config";
 
 const NFT_CONTRACT_ABI = BattlePetNFTABI;
 
@@ -196,6 +195,7 @@ export default function Game() {
 
     try {
       const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
       const tokenIds = await nftContract.tokensOfOwner(account);
       
       console.log("Token IDs:", tokenIds);
@@ -203,6 +203,11 @@ export default function Game() {
       const chars: Character[] = [];
       for (let i = 0; i < tokenIds.length; i++) {
         const tokenId = Number(tokenIds[i]);
+        
+        // Skip tokens listed on marketplace
+        const listing = await marketContract.listings(tokenId);
+        if (listing.active) continue;
+        
         const element = elements[tokenId % 4] as any;
         const type = characterTypes[tokenId % 5] as any;
         const pokemonData = getPokemonData(element, tokenId);
