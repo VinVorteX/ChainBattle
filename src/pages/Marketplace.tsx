@@ -6,12 +6,15 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, Tag, Flame, Droplet, Wind, Mountain, TrendingUp, Filter, Package } from "lucide-react";
+import { ShoppingCart, Tag, Flame, Droplet, Wind, Mountain, TrendingUp, Filter, Package, DollarSign } from "lucide-react";
 import { motion } from "motion/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, BattlePetNFTABI, MarketplaceABI } from "@/contracts/config";
+import { useWallet } from "@/contexts/WalletContext";
 
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 type MarketListing = {
   listingId: number;
@@ -30,112 +33,110 @@ type MarketListing = {
 
 export default function Marketplace() {
   const { toast } = useToast();
-  const [account, setAccount] = useState<string>("");
+  const { provider, signer, account, isConnected } = useWallet();
   const [listings, setListings] = useState<MarketListing[]>([]);
   const [myListings, setMyListings] = useState<MarketListing[]>([]);
   const [myCollection, setMyCollection] = useState<MarketListing[]>([]);
+  const [sellPrice, setSellPrice] = useState<string>("0.05");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterElement, setFilterElement] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("price-low");
 
   useEffect(() => {
-    loadMarketplace();
-  }, []);
+    if (isConnected && signer) {
+      loadMyCollection();
+      loadMarketplaceListings();
+    }
+  }, [isConnected, signer]);
 
-  function loadMarketplace() {
-    // Demo marketplace listings
-    const demoListings: MarketListing[] = [
-      {
-        listingId: 1,
-        tokenId: 6,
-        name: "Charizard #6",
-        type: "Warrior",
-        power: 84,
-        defense: 78,
-        level: 3,
-        element: "Fire",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
-        price: "0.05",
-        seller: "0x1234...5678",
-        isOwned: false,
-      },
-      {
-        listingId: 2,
-        tokenId: 9,
-        name: "Blastoise #9",
-        type: "Tank",
-        power: 83,
-        defense: 100,
-        level: 4,
-        element: "Water",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png",
-        price: "0.08",
-        seller: "0xabcd...efgh",
-        isOwned: false,
-      },
-      {
-        listingId: 3,
-        tokenId: 25,
-        name: "Pikachu #25",
-        type: "Assassin",
-        power: 55,
-        defense: 40,
-        level: 2,
-        element: "Wind",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
-        price: "0.02",
-        seller: "0x9876...4321",
-        isOwned: false,
-      },
-      {
-        listingId: 4,
-        tokenId: 59,
-        name: "Arcanine #59",
-        type: "Warrior",
-        power: 110,
-        defense: 80,
-        level: 5,
-        element: "Fire",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/59.png",
-        price: "0.15",
-        seller: "0x5555...6666",
-        isOwned: false,
-      },
-      {
-        listingId: 5,
-        tokenId: 130,
-        name: "Gyarados #130",
-        type: "Warrior",
-        power: 125,
-        defense: 79,
-        level: 6,
-        element: "Water",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
-        price: "0.20",
-        seller: "0x7777...8888",
-        isOwned: false,
-      },
-      {
-        listingId: 6,
-        tokenId: 76,
-        name: "Golem #76",
-        type: "Tank",
-        power: 120,
-        defense: 130,
-        level: 5,
-        element: "Earth",
-        image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/76.png",
-        price: "0.12",
-        seller: "0x3333...4444",
-        isOwned: false,
-      },
-    ];
-    setListings(demoListings);
+  async function loadMyCollection() {
+    if (!signer || !account) return;
+
+    try {
+      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const tokenIds = await nftContract.tokensOfOwner(account);
+      
+      const collection: MarketListing[] = [];
+      for (let i = 0; i < tokenIds.length; i++) {
+        const tokenId = Number(tokenIds[i]);
+        const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
+        const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
+        
+        // Get Pokemon data
+        const pokemonId = getPokemonIdByElement(element, tokenId);
+        
+        collection.push({
+          listingId: tokenId,
+          tokenId,
+          name: `${type} #${tokenId}`,
+          type,
+          power: 50 + (tokenId % 50),
+          defense: 40 + (tokenId % 60),
+          level: 1,
+          element,
+          image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`,
+          price: "0",
+          seller: account,
+          isOwned: true,
+        });
+      }
+      setMyCollection(collection);
+    } catch (err) {
+      console.error("Load collection error:", err);
+    }
   }
 
-  async function connectWallet() {
-    setAccount("0xDemo...1234");
-    toast({ title: "Connected!", description: "Demo wallet connected" });
+  function getPokemonIdByElement(element: string, seed: number): number {
+    const pokemonByElement: Record<string, number[]> = {
+      Fire: [4, 5, 6, 37, 38, 58, 59, 77, 78, 126, 136, 146],
+      Water: [7, 8, 9, 54, 55, 60, 61, 62, 86, 87, 116, 117, 130, 131, 134],
+      Wind: [16, 17, 18, 21, 22, 25, 26, 81, 82, 100, 101, 125, 135, 145],
+      Earth: [27, 28, 31, 34, 50, 51, 74, 75, 76, 95, 104, 105, 111, 112],
+    };
+    const elementPokemon = pokemonByElement[element] || pokemonByElement.Fire;
+    return elementPokemon[seed % elementPokemon.length];
+  }
+
+  async function loadMarketplaceListings() {
+    if (!signer) return;
+
+    try {
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
+      const marketListings: MarketListing[] = [];
+      
+      // Check listings for token IDs 1-100
+      for (let tokenId = 1; tokenId <= 100; tokenId++) {
+        try {
+          const price = await marketContract.listings(tokenId);
+          if (price > 0n) {
+            const seller = await marketContract.tokenSellers(tokenId);
+            const element = ["Fire", "Water", "Wind", "Earth"][tokenId % 4] as any;
+            const type = ["Warrior", "Mage", "Assassin", "Tank", "Ranger"][tokenId % 5] as any;
+            const pokemonId = getPokemonIdByElement(element, tokenId);
+            
+            marketListings.push({
+              listingId: tokenId,
+              tokenId,
+              name: `${type} #${tokenId}`,
+              type,
+              power: 50 + (tokenId % 50),
+              defense: 40 + (tokenId % 60),
+              level: 1,
+              element,
+              image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`,
+              price: ethers.formatEther(price),
+              seller,
+              isOwned: seller.toLowerCase() === account?.toLowerCase(),
+            });
+          }
+        } catch {}
+      }
+      
+      console.log("Marketplace listings:", marketListings);
+      setListings(marketListings);
+    } catch (err) {
+      console.error("Load marketplace error:", err);
+    }
   }
 
   async function buyNFT(listing: MarketListing) {
@@ -144,24 +145,69 @@ export default function Marketplace() {
       return;
     }
 
-    toast({ title: "Processing...", description: `Buying ${listing.name} for ${listing.price} ETH` });
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setListings(prev => prev.filter(l => l.listingId !== listing.listingId));
-    setMyCollection(prev => [...prev, { ...listing, isOwned: true }]);
-    toast({ title: "Purchase Successful! 🎉", description: `You now own ${listing.name}` });
+    if (DEMO_MODE) {
+      toast({ title: "Processing...", description: `Buying ${listing.name} for ${listing.price} ETH` });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setListings(prev => prev.filter(l => l.listingId !== listing.listingId));
+      setMyCollection(prev => [...prev, { ...listing, isOwned: true }]);
+      toast({ title: "Purchase Successful! 🎉", description: `You now own ${listing.name}` });
+      return;
+    }
+
+    try {
+      toast({ title: "Processing...", description: "Buying NFT..." });
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
+      const tx = await marketContract.buyItem(listing.tokenId, {
+        value: ethers.parseEther(listing.price)
+      });
+      await tx.wait();
+      toast({ title: "Purchase Successful! 🎉", description: `You now own ${listing.name}` });
+      await loadMyCollection();
+      await loadMarketplaceListings();
+    } catch (err: any) {
+      toast({ title: "Purchase Failed", description: err?.message, variant: "destructive" });
+    }
   }
 
-  async function listNFT(tokenId: number, price: string) {
+  async function listNFT(nft: MarketListing, price: string) {
     if (!account) {
       toast({ title: "Connect Wallet", description: "Please connect wallet first", variant: "destructive" });
       return;
     }
 
-    toast({ title: "Listing NFT...", description: "Creating marketplace listing" });
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast({ title: "Listed! 🏷️", description: "Your NFT is now on the marketplace" });
+    if (DEMO_MODE) {
+      toast({ title: "Listing NFT...", description: "Creating marketplace listing" });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setMyCollection(prev => prev.filter(n => n.listingId !== nft.listingId));
+      const newListing = {
+        ...nft,
+        price,
+        seller: account,
+        listingId: Date.now(),
+        isOwned: false,
+      };
+      setListings(prev => [newListing, ...prev]);
+      toast({ title: "Listed! 🏷️", description: `Your NFT is now on sale for ${price} ETH` });
+      return;
+    }
+
+    try {
+      toast({ title: "Approving NFT...", description: "Step 1/2" });
+      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const approveTx = await nftContract.approve(MARKETPLACE_CONTRACT_ADDRESS, nft.tokenId);
+      await approveTx.wait();
+
+      toast({ title: "Listing NFT...", description: "Step 2/2" });
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
+      const listTx = await marketContract.listForSale(nft.tokenId, ethers.parseEther(price));
+      await listTx.wait();
+
+      toast({ title: "Listed! 🏷️", description: `Your NFT is now on sale for ${price} ETH` });
+      await loadMyCollection();
+      await loadMarketplaceListings();
+    } catch (err: any) {
+      toast({ title: "Listing Failed", description: err?.message, variant: "destructive" });
+    }
   }
 
   const getElementIcon = (element: string) => {
@@ -201,14 +247,9 @@ export default function Marketplace() {
               <p className="text-muted-foreground mt-1">Buy and sell character NFTs</p>
             </div>
             
-            {!account ? (
-              <Button onClick={connectWallet} size="lg" className="bg-gradient-to-br from-primary to-accent">
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Connect Wallet
-              </Button>
-            ) : (
+            {isConnected && (
               <Badge variant="outline" className="text-sm px-4 py-2">
-                {account}
+                {account.slice(0, 6)}...{account.slice(-4)}
               </Badge>
             )}
           </div>
@@ -406,8 +447,41 @@ export default function Marketplace() {
                           <div><span className="text-muted-foreground">Power:</span><span className="font-bold ml-1">{nft.power}</span></div>
                           <div><span className="text-muted-foreground">Defense:</span><span className="font-bold ml-1">{nft.defense}</span></div>
                         </div>
-                        <div className="border-t pt-3">
-                          <div className="text-sm text-muted-foreground mb-2">Purchased: <span className="font-bold text-primary">{nft.price} ETH</span></div>
+                        <div className="border-t pt-3 space-y-2">
+                          <div className="text-sm text-muted-foreground">Purchased: <span className="font-bold text-primary">{nft.price} ETH</span></div>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button className="w-full bg-gradient-to-br from-primary to-accent">
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Sell NFT
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>List {nft.name} for Sale</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div>
+                                  <label className="text-sm font-medium mb-2 block">Price (ETH)</label>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01"
+                                    value={sellPrice}
+                                    onChange={(e) => setSellPrice(e.target.value)}
+                                    placeholder="0.05"
+                                  />
+                                </div>
+                                <Button 
+                                  onClick={() => listNFT(nft, sellPrice)}
+                                  className="w-full bg-gradient-to-br from-primary to-accent"
+                                >
+                                  List for {sellPrice} ETH
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          
                           <Link to="/game"><Button className="w-full" variant="outline">Use in Battle</Button></Link>
                         </div>
                       </div>

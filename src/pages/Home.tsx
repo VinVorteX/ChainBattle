@@ -39,32 +39,36 @@ export default function Home() {
         </div>
 
         {/* Floating Pokemon Cards */}
-        {[6, 9, 25, 59, 130].map((pokemonId, i) => (
-          <motion.div
-            key={pokemonId}
-            className="absolute w-32 h-32 opacity-10"
-            initial={{ 
-              x: (i * 20) + '%',
-              y: (i * 15) + '%',
-              rotate: 0
-            }}
-            animate={{
-              y: [(i * 15) + '%', (i * 15 + 10) + '%', (i * 15) + '%'],
-              rotate: [0, 10, -10, 0],
-            }}
-            transition={{
-              duration: 5 + i,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <img 
-              src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`}
-              alt=""
-              className="w-full h-full object-contain"
-            />
-          </motion.div>
-        ))}
+        {[6, 9, 25, 59, 130, 4, 7, 16, 27, 37].map((pokemonId, i) => {
+          const startX = (i * 10) % 100;
+          const startY = (i * 13) % 100;
+          const endX = ((i * 17) + 50) % 100;
+          const endY = ((i * 23) + 30) % 100;
+          
+          return (
+            <motion.div
+              key={pokemonId}
+              className="absolute w-32 h-32 opacity-10"
+              style={{ left: `${startX}%`, top: `${startY}%` }}
+              animate={{
+                x: [`0%`, `${endX - startX}vw`, `0%`],
+                y: [`0%`, `${endY - startY}vh`, `0%`],
+                rotate: [0, 360, 0],
+              }}
+              transition={{
+                duration: 20 + i * 2,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            >
+              <img 
+                src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`}
+                alt=""
+                className="w-full h-full object-contain"
+              />
+            </motion.div>
+          );
+        })}
 
         {/* Main Content */}
         <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">

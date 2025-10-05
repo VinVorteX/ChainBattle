@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 import React from "react";
 import { FloatingDock } from "@/components/ui/floating-dock";
+import { useWallet } from "@/contexts/WalletContext";
 import {
   IconBrandGithub,
   IconBrandX,
@@ -15,6 +16,8 @@ import {
 } from "@tabler/icons-react";
 
 export const Header = () => {
+  const { account, connectWallet, isConnected } = useWallet();
+  
   const links = [
     {
       title: "Home",
@@ -61,9 +64,14 @@ export const Header = () => {
           />
         </nav>
         
-        <Button className="bg-gradient-to-br from-primary to-accent text-black" size="sm">
+        <Button 
+          onClick={connectWallet}
+          className="bg-gradient-to-br from-primary to-accent text-black" 
+          size="sm"
+          disabled={isConnected}
+        >
           <Wallet className="mr-2 h-4 w-4" />
-          Connect Wallet
+          {isConnected ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
         </Button>
       </div>
     </header>

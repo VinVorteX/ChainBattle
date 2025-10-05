@@ -8,19 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Swords, Trophy, Shield, Zap, Users, Bot, Flame, Droplet, Wind, Mountain, Target } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useWallet } from "@/contexts/WalletContext";
 
-const NFT_CONTRACT_ADDRESS = "0xREPLACE_WITH_YOUR_NFT_CONTRACT_ADDRESS";
-const GAME_CONTRACT_ADDRESS = "0xREPLACE_WITH_YOUR_GAME_CONTRACT_ADDRESS";
+const NFT_CONTRACT_ADDRESS = "0xff3Ff566E5f0cEaA7337FB1752a6A8ec5d62f362";
+const GAME_CONTRACT_ADDRESS = "0x75F740d3C424452aA99d9FEe5754C50bb4F8f594";
 
-// Demo mode - set to true to test without wallet/contracts
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
-const NFT_CONTRACT_ABI = [
-  "function mint() payable returns (uint256)",
-  "function tokensOfOwner(address owner) view returns (uint256[])",
-  "function tokenURI(uint256 tokenId) view returns (string)",
-  "function ownerOf(uint256 tokenId) view returns (address)",
-];
+import { BattlePetNFTABI } from "@/contracts/config";
+
+const NFT_CONTRACT_ABI = BattlePetNFTABI;
 
 const GAME_CONTRACT_ABI = [
   "function battle(uint256 tokenA, uint256 tokenB) returns (bytes32)",
@@ -45,9 +42,7 @@ type BattleState = "selecting" | "battling" | "result";
 
 export default function Game() {
   const { toast } = useToast();
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [account, setAccount] = useState<string>("");
+  const { provider, signer, account, isConnected } = useWallet();
   
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const [battleState, setBattleState] = useState<BattleState>("selecting");
@@ -63,38 +58,14 @@ export default function Game() {
   const elements = ["Fire", "Water", "Wind", "Earth"];
 
   useEffect(() => {
-    if ((window as any).ethereum) {
-      const p = new ethers.BrowserProvider((window as any).ethereum);
-      setProvider(p);
-    }
-  }, []);
-
-  async function connectWallet() {
-    if (demoMode) {
-      setAccount("0xDemo...1234");
+    if (DEMO_MODE) {
       loadDemoCharacters();
-      toast({ title: "Demo Mode Active", description: "Playing with mock data" });
-      return;
+    } else if (isConnected && signer) {
+      loadCharacters();
     }
-    
-    if (!(window as any).ethereum) {
-      toast({ title: "MetaMask Required", description: "Please install MetaMask", variant: "destructive" });
-      return;
-    }
-    try {
-      const p = new ethers.BrowserProvider((window as any).ethereum);
-      await p.send("eth_requestAccounts", []);
-      const s = await p.getSigner();
-      const addr = await s.getAddress();
-      setProvider(p);
-      setSigner(s);
-      setAccount(addr);
-      toast({ title: "Connected!", description: `${addr.slice(0, 6)}...${addr.slice(-4)}` });
-      await loadCharacters(s, addr);
-    } catch (err: any) {
-      toast({ title: "Connection Failed", description: err?.message, variant: "destructive" });
-    }
-  }
+  }, [isConnected, signer]);
+
+
 
   function getPokemonByElement(element: string, seed: number): { id: number; power: number; defense: number } {
     // Pokemon organized by element type with their base stats
@@ -220,36 +191,36 @@ export default function Game() {
     setMyCharacters(demoChars);
   }
 
-  async function loadCharacters(signerLocal?: ethers.Signer, ownerAddr?: string) {
-    const s = signerLocal ?? signer;
-    const addr = ownerAddr ?? account;
-    if (!s || !addr) return;
+  async function loadCharacters() {
+    if (!signer || !account) return;
 
     try {
-      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, s);
-      const tokenIds: bigint[] = await nftContract.tokensOfOwner(addr);
+      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const tokenIds = await nftContract.tokensOfOwner(account);
+      
+      console.log("Token IDs:", tokenIds);
       
       const chars: Character[] = [];
-      for (const id of tokenIds) {
-        const tokenId = Number(id);
-        const wins = Math.floor(Math.random() * 10);
-        const level = Math.floor(wins / 3) + 1;
-        
+      for (let i = 0; i < tokenIds.length; i++) {
+        const tokenId = Number(tokenIds[i]);
         const element = elements[tokenId % 4] as any;
+        const type = characterTypes[tokenId % 5] as any;
         const pokemonData = getPokemonData(element, tokenId);
         
         chars.push({
           tokenId,
-          name: `${characterTypes[tokenId % 5]} #${tokenId}`,
-          type: characterTypes[tokenId % 5] as any,
+          name: `${type} #${tokenId}`,
+          type,
           power: pokemonData.power,
           defense: pokemonData.defense,
-          wins,
-          level,
+          wins: 0,
+          level: 1,
           element,
           image: pokemonData.image,
         });
       }
+      
+      console.log("Loaded characters:", chars);
       setMyCharacters(chars);
     } catch (err) {
       console.error("Load characters error:", err);
@@ -288,8 +259,10 @@ export default function Game() {
 
     try {
       setIsMinting(true);
-      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-      const tx = await nftContract.mint({ value: ethers.parseEther("0.001") });
+      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      
+      console.log("Calling mint with account:", account);
+      const tx = await nftContract.mint(account);
       
       toast({ title: "Minting...", description: "Transaction submitted" });
       await tx.wait();
@@ -297,7 +270,9 @@ export default function Game() {
       toast({ title: "Character Minted! 🎉", description: "Your new warrior is ready!" });
       await loadCharacters();
     } catch (err: any) {
-      toast({ title: "Mint Failed", description: err?.message, variant: "destructive" });
+      console.error("Mint error:", err);
+      const errorMsg = err?.reason || err?.message || "Unknown error";
+      toast({ title: "Mint Failed", description: errorMsg, variant: "destructive" });
     } finally {
       setIsMinting(false);
     }
@@ -357,35 +332,45 @@ export default function Game() {
   async function executeBattle() {
     if (!selectedChar || !opponentChar) return;
 
+    // Store tokenIds before battle
+    const myTokenId = selectedChar.tokenId;
+    const myCharName = selectedChar.name;
+
     setIsBattling(true);
     setBattleState("battling");
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Fair battle calculation: stats + large random factor (0-100)
-    const myRandom = Math.random() * 100;
-    const oppRandom = Math.random() * 100;
+    const myTotal = selectedChar.power + selectedChar.defense + (selectedChar.wins * 5) + Math.random() * 30;
+    const oppTotal = opponentChar.power + opponentChar.defense + (opponentChar.wins * 5) + Math.random() * 30;
     
-    const myTotal = selectedChar.power + selectedChar.defense + myRandom;
-    const oppTotal = opponentChar.power + opponentChar.defense + oppRandom;
-
-    const winner = myTotal > oppTotal ? selectedChar : opponentChar;
-    const loser = myTotal > oppTotal ? opponentChar : selectedChar;
-
-    const details = `${winner.name} wins with ${Math.round(myTotal > oppTotal ? myTotal : oppTotal)} total power!`;
+    const isVictory = myTotal > oppTotal;
+    const winner = isVictory ? selectedChar : opponentChar;
+    const loser = isVictory ? opponentChar : selectedChar;
+    
+    const details = `${winner.name} wins with ${Math.round(isVictory ? myTotal : oppTotal)} total power!`;
 
     setBattleResult({ winner, loser, details });
     setBattleState("result");
     setIsBattling(false);
 
-    if (winner.tokenId === selectedChar.tokenId) {
+    // Handle NFT transfer on win/loss
+    if (isVictory) {
+      // Victory - gain opponent's NFT (only in multiplayer vs real players)
+      if (gameMode === "multiplayer") {
+        toast({ title: "Victory! 🎉", description: "You won the opponent's NFT!", duration: 5000 });
+        setMyCharacters(prev => [...prev, opponentChar]);
+      } else {
+        toast({ title: "Victory! 🎉", description: "Your character gained experience!" });
+      }
+      
       setMyCharacters(prev => prev.map(c => 
-        c.tokenId === selectedChar.tokenId 
+        c.tokenId === myTokenId
           ? { ...c, wins: c.wins + 1, level: Math.floor((c.wins + 1) / 3) + 1 }
           : c
       ));
-      toast({ title: "Victory! 🎉", description: "Your character gained experience!" });
     } else {
+      // Defeat
       toast({ title: "Defeated", description: "Better luck next time!", variant: "destructive" });
     }
   }
@@ -539,12 +524,7 @@ export default function Game() {
               <p className="text-muted-foreground mt-1">1v1 Card Battle Game - Mint, Battle, Level Up!</p>
             </div>
             
-            {!account ? (
-              <Button onClick={connectWallet} size="lg" className="bg-gradient-to-br from-primary to-accent">
-                <Sparkles className="mr-2 h-5 w-5" />
-                Connect Wallet
-              </Button>
-            ) : (
+            {isConnected && (
               <div className="text-right space-y-2">
                 <Badge variant="outline" className="text-sm block">
                   {account.slice(0, 6)}...{account.slice(-4)}
