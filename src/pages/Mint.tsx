@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Package, Flame, Droplet, Wind, Mountain, Zap, Shield, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import { useWallet } from "@/contexts/WalletContext";
-import { NFT_CONTRACT_ADDRESS, BattlePetNFTABI } from "@/contracts/config";
+import { NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, BattlePetNFTABI, MarketplaceABI } from "@/contracts/config";
 
 console.log("NFT Contract Address:", NFT_CONTRACT_ADDRESS);
 import { Link } from "react-router-dom";
@@ -54,11 +54,17 @@ export default function Mint() {
 
     try {
       const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, BattlePetNFTABI, signer);
+      const marketContract = new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, MarketplaceABI, signer);
       const tokenIds = await nftContract.tokensOfOwner(account);
       
       const chars: Character[] = [];
       for (let i = 0; i < tokenIds.length; i++) {
         const tokenId = Number(tokenIds[i]);
+        
+        // Skip tokens listed on marketplace
+        const listing = await marketContract.listings(tokenId);
+        if (listing.active) continue;
+        
         const element = elements[tokenId % 4] as any;
         const type = characterTypes[tokenId % 5] as any;
         const pokemonId = getPokemonIdByElement(element, tokenId);
